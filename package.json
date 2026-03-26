@@ -1,0 +1,13 @@
+{
+  "name": "style-4625-repro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimale Stencil-Repro für STYLE-4625 s-menu Bug",
+  "scripts": {
+    "build": "stencil build",
+    "start": "stencil build --dev --watch --serve"
+  },
+  "devDependencies": {
+    "@stencil/core": "^4.22.0"
+  }
+}

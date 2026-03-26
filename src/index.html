@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>STYLE-4625 — s-menu Bug Reproduktion</title>
+  <script type="module" src="/build/repro.esm.js"></script>
+  <script nomodule src="/build/repro.js"></script>
+
+  <!-- Shield 1.13 -->
+  <script type="module" src="https://static.c.huk.de/shield/components/1.13/lib/lib.esm.js"></script>
+  <link rel="stylesheet" href="https://static.c.huk.de/shield/components/1.13/stencil-cls.css" />
+  <link rel="stylesheet" href="https://static.c.huk.de/shield/css-framework/1.13/css/all.css" />
+  <link rel="stylesheet" href="https://static.c.huk.de/shield/themes/1.13/hukde/theme.css" />
+
+  <style>
+    body { font-family: system-ui; max-width: 700px; margin: 40px auto; padding: 0 16px; }
+    pre { background: #1e1e1e; color: #8bc34a; padding: 10px; border-radius: 6px; font-size: 0.8rem; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+
+  <h2>s-menu + Stencil Relay-Slot: <code>autoUpdate</code> geht verloren</h2>
+  <p>
+    Je tiefer die Verschachtelung mit Relay-Slots, desto wahrscheinlicher der Bug.
+    Stencils Slot-Relocation verschiebt das s-menu bei jedem Relay physisch im DOM.
+  </p>
+
+  <h3>1 Ebene — repro-outer → repro-inner</h3>
+  <repro-outer>
+    <div slot="action">
+      <s-menu placement="bottom-end">
+        <s-icon-button icon="more-vert" color="primary" label="1x" shape="circle" size="sm"></s-icon-button>
+        <div slot="content">
+          <s-menu-item label="Anzeigen"></s-menu-item>
+          <s-menu-item label="Bearbeiten"></s-menu-item>
+        </div>
+      </s-menu>
+    </div>
+    <p>1 Relay-Slot</p>
+  </repro-outer>
+  <pre id="debug-1">⏳</pre>
+
+  <h3>2 Ebenen — repro-wrapper → repro-outer → repro-inner</h3>
+  <repro-wrapper>
+    <div slot="action">
+      <s-menu placement="bottom-end">
+        <s-icon-button icon="more-vert" color="primary" label="2x" shape="circle" size="sm"></s-icon-button>
+        <div slot="content">
+          <s-menu-item label="Anzeigen"></s-menu-item>
+          <s-menu-item label="Bearbeiten"></s-menu-item>
+        </div>
+      </s-menu>
+    </div>
+    <p>2 Relay-Slots</p>
+  </repro-wrapper>
+  <pre id="debug-2">⏳</pre>
+
+  <script>
+    function check(menu, el, label) {
+      if (!menu) { el.textContent = label + '\n❌ nicht gefunden'; return; }
+      const panel = menu.querySelector('.s-menu__menu');
+      if (!panel) { el.textContent = label + '\n⏳ Panel noch nicht bereit'; return; }
+      menu.show = true;
+      setTimeout(() => {
+        const x = panel.style.getPropertyValue('--_menu-x');
+        const y = panel.style.getPropertyValue('--_menu-y');
+        const has = panel.getAttribute('style') !== null;
+        el.textContent = label + '\n' +
+          '--_menu-x: ' + (x || '❌ LEER') + '\n' +
+          '--_menu-y: ' + (y || '❌ LEER') + '\n' +
+          'style: ' + (has ? '✅ computePosition aufgerufen' : '❌ computePosition NIE aufgerufen');
+        menu.show = false;
+      }, 400);
+    }
+
+    Promise.all([
+      customElements.whenDefined('s-menu'),
+      customElements.whenDefined('repro-wrapper'),
+    ]).then(() => {
+      setTimeout(() => {
+        const m1 = document.querySelector('repro-outer > s-menu, repro-outer s-menu');
+        const m2 = document.querySelector('repro-wrapper s-menu');
+        // Finde das s-menu das direkt in repro-outer ist (nicht über wrapper)
+        const allMenus = document.querySelectorAll('s-menu');
+        check(allMenus[0], document.getElementById('debug-1'), '1 Ebene (repro-outer → repro-inner):');
+        setTimeout(() => {
+          check(allMenus[1], document.getElementById('debug-2'), '2 Ebenen (repro-wrapper → repro-outer → repro-inner):');
+        }, 500);
+      }, 1500);
+    });
+  </script>
+
+</body>
+</html>
